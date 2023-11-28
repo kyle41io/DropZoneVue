@@ -1,2 +1,9 @@
 @import "./base.css";
 
+* {
+  padding: 0px;
+  font-weight: normal;
+  box-sizing: border-box;
+}
+
+
