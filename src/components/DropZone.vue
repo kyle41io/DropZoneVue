@@ -1,63 +1,116 @@
 <script>
 import IconUpload from "@/components/icons/IconUpload.vue";
-import IconNext from "@/components/icons/IconNext.vue";
-import IconDefault from "@/components/icons/IconDefault.vue";
-import IconWord from "@/components/icons/IconWord.vue";
-import IconExcel from "@/components/icons/IconExcel.vue";
-import IconPdf from "@/components/icons/IconPdf.vue";
-import FileCard from "@/components/FileCard.vue";
+import FileList from "./FileList.vue";
+import { ref, uploadBytesResumable } from "firebase/storage";
+import storage from "@/utils/firebaseConfig";
 
 export default {
   data() {
     return {
-      files: [
-        { type: "doc", name: "sample.doc", size: "500KB" },
-        { type: "xlsx", name: "sample.xlsx", size: "600KB" },
-        { type: "pdf", name: "sample.pdf", size: "700KB" },
-        // { type: "jpg", name: "sample.jpg", size: "800KB" },
-      ],
+      files: [],
+      slide: 0,
+      isDragging: false,
+      isError: false,
+      isComplete: false,
     };
   },
   components: {
     IconUpload,
-    IconNext,
-    IconDefault,
-    IconWord,
-    IconExcel,
-    IconPdf,
-    FileCard,
+    FileList,
   },
+  methods: {
+    handleFileChange(event) {
+      const fileList = event.target.files;
+
+      this.handleFileSelect(fileList);
+    },
+    handleFileSelect(fileList) {
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const fileType = file.name.split(".").pop().toLowerCase();
+        const fileName = file.name;
+
+        let fileSize = (file.size / 1024).toFixed(2);
+        if (fileSize > 10 * 1024) {
+          this.isError = true;
+          return;
+        }
+        if (fileSize > 1024) {
+          fileSize = (fileSize / 1024).toFixed(2) + "MB";
+        } else {
+          fileSize += "KB";
+        }
+        this.isError = false;
+
+        this.files.push({ type: fileType, name: fileName, size: fileSize });
+      }
+    },
+    handleDrop(event) {
+      this.isDragging = false;
+      const fileList = event.dataTransfer.files;
+      this.handleFileSelect(fileList);
+    },
+    uploadFiles() {
+      const timestamp = Date.now();
+      const uploadPromises = [];
+      // Lặp qua từng file trong danh sách files
+      this.files.forEach((file) => {
+        const storageRef = ref(storage, "/" + timestamp + "/" + file.name);
+        const uploadPromise = uploadBytesResumable(storageRef, file);
+        uploadPromises.push(uploadPromise);
+      });
+      Promise.all(uploadPromises)
+        .then(() => {
+          this.isComplete = true;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    },
+    reloadPage() {
+      window.location.reload();
+    },
+  },
+  computed: {},
 };
 </script>
 
 <template>
   <div>
-    <div class="drag-drop">
-      <IconUpload />
-      <div class="">
-        <h2>Drag and drop files</h2>
-        <p>Browse files</p>
+    <div v-if="!isComplete">
+      <div
+        class="drag-drop"
+        :class="{ dragging: isDragging, error: isError }"
+        @dragover.prevent="isDragging = true"
+        @dragenter.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
+        @drop.prevent="handleDrop"
+      >
+        <div class="" v-if="isDragging">Drop!!!</div>
+        <div class="" v-else>
+          <IconUpload />
+          <div class="">
+            <h2>Drag and drop files</h2>
+            <label for="file" class="browse">Browse files</label>
+            <input id="file" type="file" @change="handleFileChange" multiple />
+          </div>
+          <button
+            v-if="files.length >= 1"
+            @click="uploadFiles"
+            class="upload-btn"
+          >
+            Upload
+          </button>
+        </div>
       </div>
+      <div class="error-text" v-if="isError">
+        The maximum file size is 10 MB
+      </div>
+      <FileList :files="files"></FileList>
     </div>
-    <div class="preview">
-      <div class="prev"><IconNext /></div>
-      <div class="file-list" v-for="file in files" :key="file">
-        <FileCard>
-          <template #file-icon>
-            <IconWord v-if="file.type === 'doc'" />
-            <IconExcel v-else-if="file.type === 'xlsx'" />
-            <IconPdf v-else-if="file.type === 'pdf'" />
-            <IconDefault v-else />
-          </template>
-          <template #file-props>
-            <div class="file-props">
-              <div class="file-name">{{ file.name }}</div>
-              <div class="file-size">{{ file.size }}</div>
-            </div>
-          </template>
-        </FileCard>
-      </div>
-      <div class="next"><IconNext /></div>
+    <div v-if="isComplete" class="upload-complete">
+      <h2>Upload Complete</h2>
+      <p class="continue" @click="reloadPage">Continue to upload</p>
     </div>
   </div>
 </template>
@@ -82,61 +135,58 @@ export default {
     gap: 4px;
     h2 {
       text-align: center;
-      font-family: Noto Sans;
       font-size: 18px;
       font-style: normal;
       font-weight: 700;
     }
-    p {
-      font-family: Noto Sans;
+    label {
       font-size: 18px;
       font-style: normal;
       font-weight: 400;
       text-decoration-line: underline;
     }
+    input {
+      visibility: hidden;
+    }
+  }
+
+  &.error {
+    border-color: red;
+  }
+  &.dragging {
+    border: 2px dotted rgb(98, 98, 243);
+  }
+  .error-text {
+    color: red;
   }
 }
-.preview {
-  height: 50px;
-  width: 842px;
+
+.upload-btn {
+  background: #4284c7;
+  padding: 6px;
+  border-radius: 4px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  &:hover {
+    background: #0974df;
+  }
+}
+
+.browse {
+  cursor: pointer;
+}
+
+.upload-complete {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-top: 40px;
-  .prev {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    background: #627d98;
-    border-radius: 32px;
-    transform: rotate(180deg);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .file-list {
-    padding-right: 10px;
-    padding-left: 10px;
-  }
-
-  .next {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    background: #627d98;
-    border-radius: 32px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
 }
-.file-name {
-  color: #333;
-  font-weight: 700;
-}
-
-.file-size {
-  color: #666;
+.continue {
+  color: #4284c7;
+  cursor: pointer;
+  &:hover {
+    color: #0974df;
+  }
 }
 </style>

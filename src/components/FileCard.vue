@@ -1,16 +1,19 @@
+<script setup>
+import IconDelete from "./icons/IconDelete.vue";
+</script>
+
 <template>
   <div id="file-card">
     <slot name="file-icon"></slot>
     <div class="file-content">
-      <slot name="file-props"></slot>
-      <IconDelete />
+      <div name="file-props">
+        <slot name="file-name"></slot>
+        <slot name="file-size"></slot>
+      </div>
+      <div class="delete" @click="$emit('delete-file')"><IconDelete /></div>
     </div>
   </div>
 </template>
-
-<script setup>
-import IconDelete from "./icons/IconDelete.vue";
-</script>
 
 <style lang="scss" scoped>
 #file-card {
@@ -22,12 +25,17 @@ import IconDelete from "./icons/IconDelete.vue";
   background: var(--White, #fff);
   padding: 8px;
   display: flex;
-  gap: 12px;
+  gap: 4px;
   align-items: center;
   .file-content {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
+}
+
+.delete {
+  cursor: pointer;
 }
 </style>

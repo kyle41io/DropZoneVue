@@ -1,6 +1,15 @@
-<script setup>
-// import HelloWorld from './components/HelloWorld.vue'
+<script>
 import DropZone from "@/components/DropZone.vue";
+
+export default {
+  components: {
+    DropZone,
+  },
+  data() {
+    return {};
+  },
+  methods: {},
+};
 </script>
 
 <template>
@@ -11,7 +20,7 @@ import DropZone from "@/components/DropZone.vue";
 
 <style scoped>
 #app {
-  height: 500px;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   align-items: center;
